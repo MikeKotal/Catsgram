@@ -9,7 +9,7 @@ import java.time.Instant;
 @EqualsAndHashCode(of = {"email"})
 public class User {
     private Long id;
-    private String userName;
+    private String username;
     private String email;
     private String password;
     private Instant registrationDate;
