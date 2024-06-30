@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import ru.yandex.practicum.catsgram.exception.ParameterNotValidException;
 import ru.yandex.practicum.catsgram.model.Post;
 import ru.yandex.practicum.catsgram.service.PostService;
 
@@ -31,6 +32,16 @@ public class PostController {
     public Collection<Post> findAll(@RequestParam(defaultValue = "desc") String sort,
                                     @RequestParam(defaultValue = "10") Integer size,
                                     @RequestParam(defaultValue = "0") Long from) {
+        if (!(sort.equals("desc") || sort.equals("asc"))) {
+            throw new ParameterNotValidException("sort", "Некорректный параметр сортировки, доступны: asc, desc");
+        }
+        if (size <= 0) {
+            throw new ParameterNotValidException("size", "Некорректный размер выборки. Размер должен быть больше нуля");
+        }
+        if (from < 0) {
+            throw new ParameterNotValidException("from",
+                    "Некорректный размер выборки. Параметр отсчета не может быть меньше нуля");
+        }
         return postService.findAll(sort, size, from);
     }
 

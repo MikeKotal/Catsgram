@@ -6,7 +6,6 @@ import ru.yandex.practicum.catsgram.exception.ConditionsNotMetException;
 import ru.yandex.practicum.catsgram.exception.NotFoundException;
 import ru.yandex.practicum.catsgram.model.Post;
 import ru.yandex.practicum.catsgram.model.User;
-import ru.yandex.practicum.catsgram.service.sorting.SortOrder;
 
 import java.time.Instant;
 import java.util.Collection;
@@ -28,7 +27,7 @@ public class PostService {
 
     public Collection<Post> findAll(String sort, Integer size, Long from) {
         Collection<Post> sortedPosts;
-        if (SortOrder.from(sort).equals(SortOrder.DESCENDING)) {
+        if (sort.equals("desc")) {
             sortedPosts = posts.values().stream().sorted((Comparator.comparing(Post::getPostDate).reversed())).toList();
         } else {
             sortedPosts = posts.values().stream().sorted((Comparator.comparing(Post::getPostDate))).toList();
