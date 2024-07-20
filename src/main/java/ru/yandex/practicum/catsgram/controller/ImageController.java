@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import ru.yandex.practicum.catsgram.model.Image;
+import ru.yandex.practicum.catsgram.dto.ImageDto;
 import ru.yandex.practicum.catsgram.model.ImageData;
 import ru.yandex.practicum.catsgram.service.ImageService;
 
@@ -26,19 +26,20 @@ public class ImageController {
     private final ImageService imageService;
 
     @GetMapping("/posts/{postId}/images")
-    public List<Image> getPostImages(@PathVariable("postId") long postId) {
+    @ResponseStatus(HttpStatus.OK)
+    public List<ImageDto> getPostImages(@PathVariable("postId") Long postId) {
         return imageService.getPostImages(postId);
     }
 
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/posts/{postId}/images")
-    public List<Image> addPostImages(@PathVariable("postId") long postId,
+    public List<ImageDto> addPostImages(@PathVariable("postId") Long postId,
                                      @RequestParam("image") List<MultipartFile> files) {
         return imageService.saveImages(postId, files);
     }
 
     @GetMapping(value = "/images/{imageId}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
-    public ResponseEntity<byte[]> downloadImage(@PathVariable long imageId) {
+    public ResponseEntity<byte[]> downloadImage(@PathVariable Long imageId) {
         ImageData imageData = imageService.getImageData(imageId);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentDisposition(

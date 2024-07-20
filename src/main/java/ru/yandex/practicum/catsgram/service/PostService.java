@@ -1,82 +1,69 @@
 package ru.yandex.practicum.catsgram.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.catsgram.dal.PostRepository;
+import ru.yandex.practicum.catsgram.dto.NewPostRequest;
+import ru.yandex.practicum.catsgram.dto.PostDto;
+import ru.yandex.practicum.catsgram.dto.UpdatePostRequest;
 import ru.yandex.practicum.catsgram.exception.ConditionsNotMetException;
 import ru.yandex.practicum.catsgram.exception.NotFoundException;
+import ru.yandex.practicum.catsgram.exception.ParameterNotValidException;
+import ru.yandex.practicum.catsgram.mapper.PostMapper;
 import ru.yandex.practicum.catsgram.model.Post;
-import ru.yandex.practicum.catsgram.model.User;
 
-import java.time.Instant;
-import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.List;
 
 @Service
+@AllArgsConstructor
 public class PostService {
 
-    private final Map<Long, Post> posts = new HashMap<>();
     private final UserService userService;
+    private final PostRepository postRepository;
 
-    @Autowired
-    public PostService(UserService userService) {
-        this.userService = userService;
-    }
-
-    public Collection<Post> findAll(String sort, Integer size, Long from) {
-        Collection<Post> sortedPosts;
-        if (sort.equals("desc")) {
-            sortedPosts = posts.values().stream().sorted((Comparator.comparing(Post::getPostDate).reversed())).toList();
-        } else {
-            sortedPosts = posts.values().stream().sorted((Comparator.comparing(Post::getPostDate))).toList();
+    public List<PostDto> getPosts(String sort, Integer size, Long from) {
+        if (!(sort.equals("desc") || sort.equals("asc"))) {
+            throw new ParameterNotValidException("sort", "Некорректный параметр сортировки, доступны: asc, desc");
         }
-        return sortedPosts.stream().skip(from).limit(size).toList();
-    }
-
-    public Post getPostById(Long id) {
-        if (!posts.containsKey(id)) {
-            throw new NotFoundException("Пост с id = " + id + " не найден");
+        if (size <= 0) {
+            throw new ParameterNotValidException("size", "Некорректный размер выборки. Размер должен быть больше нуля");
         }
-        return posts.get(id);
+        if (from < 0) {
+            throw new ParameterNotValidException("from",
+                    "Некорректный размер выборки. Параметр отсчета не может быть меньше нуля");
+        }
+        return postRepository.findAllPosts()
+                .stream()
+                .map(PostMapper::mapToPostDto)
+                .sorted(sort.equals("desc") ? Comparator.comparing(PostDto::getPostDate).reversed()
+                        : Comparator.comparing(PostDto::getPostDate))
+                .skip(from)
+                .limit(size)
+                .toList();
     }
 
-    public Post create(Post post) {
-        if (post.getDescription() == null || post.getDescription().isBlank()) {
+    public PostDto getPostById(Long id) {
+        return postRepository.findPostById(id)
+                .map(PostMapper::mapToPostDto)
+                .orElseThrow(() -> new NotFoundException("Пост с id = " + id + " не найден"));
+    }
+
+    public PostDto createPost(NewPostRequest request) {
+        if (request.getDescription() == null || request.getDescription().isBlank()) {
             throw new ConditionsNotMetException("Описание не может быть пустым");
         }
-        Optional<User> currentUser = userService.findUserById(post.getAuthorId());
-        if (currentUser.isEmpty()) {
-            throw new ConditionsNotMetException(String.format("Автор с id = %s не найден", post.getAuthorId()));
-        }
-        post.setId(getNextId());
-        post.setPostDate(Instant.now());
-        posts.put(post.getId(), post);
-        return post;
+        userService.getUserById(request.getAuthorId());
+        Post post = PostMapper.mapToPost(request);
+        post = postRepository.savePost(post);
+        return PostMapper.mapToPostDto(post);
     }
 
-    public Post update(Post newPost) {
-        if (newPost.getId() == null) {
-            throw new ConditionsNotMetException("Id должен быть указан");
-        }
-        if (posts.containsKey(newPost.getId())) {
-            Post oldPost = posts.get(newPost.getId());
-            if (newPost.getDescription() == null || newPost.getDescription().isBlank()) {
-                throw new ConditionsNotMetException("Описание не может быть пустым");
-            }
-            oldPost.setDescription(newPost.getDescription());
-            return oldPost;
-        }
-        throw new NotFoundException("Пост с id = " + newPost.getId() + " не найден");
-    }
-
-    private long getNextId() {
-        long currentMaxId = posts.keySet()
-                .stream()
-                .mapToLong(id -> id)
-                .max()
-                .orElse(0);
-        return ++currentMaxId;
+    public PostDto updatePost(Long id, UpdatePostRequest request) {
+        Post updatePost = postRepository.findPostById(id)
+                .map(post -> PostMapper.updatePostFields(post, request))
+                .orElseThrow(() -> new NotFoundException("Пост с id = " + id + " не найден"));
+        updatePost = postRepository.updatePost(updatePost);
+        return PostMapper.mapToPostDto(updatePost);
     }
 }
